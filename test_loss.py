@@ -1,23 +1,16 @@
 import gym
-env = gym.make('MountainCarContinuous-v0')
-import time
-
 from replay_buffer import ReplayBuffer, Transition
 from params_pool import ParamsPool
+import matplotlib.pyplot as plt
 
+env = gym.make('MountainCarContinuous-v0')
 buf = ReplayBuffer(capacity=50000)
 param = ParamsPool(
     input_dim=env.observation_space.shape[0],
     action_dim=env.action_space.shape[0],
-    action_lower_bounds=env.action_space.low,
-    action_upper_bounds=env.action_space.high,
     noise_var=0.1,
-    noise_var_multiplier=0.95
+    noise_var_multiplier=1
 )
-target_network_update_duration = 10
-batch_size = 64
-
-num_episodes = 1000  # enough for convergence
 
 obs = env.reset()
 
@@ -34,13 +27,18 @@ batch = buf.sample(batch_size=1)
 loss1_array = []
 loss2_array = []
 for i in range(1000):
-    loss1, loss2 = param.update_q_prediction_net_and_q_maximizing_net()
+    loss1, loss2 = param.update_q_prediction_net_and_q_maximizing_net(batch)
     loss1_array.append(loss1)
     loss2_array.append(loss2)
 
-import matplotlib.pyplot as plt
+fig = plt.figure(figsize=(12, 6))
 
-plt.plot(loss1_array, label='q-learning loss')
-plt.plot(loss2_array, label='actor loss')
-plt.legend()
+fig.add_subplot(121)
+plt.plot(loss1_array)
+plt.title('q-learning loss')
+
+fig.add_subplot(122)
+plt.plot(loss2_array)
+plt.title('actor loss')
+
 plt.show()

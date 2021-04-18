@@ -1,8 +1,6 @@
-import numpy as np
 import random
 import torch
 from collections import namedtuple, deque
-from operator import itemgetter
 
 Transition = namedtuple('Transition', 's a r s_prime mask')
 Batch = namedtuple('Batch', 's a r s_prime mask')
