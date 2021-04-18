@@ -5,7 +5,8 @@ https://spinningup.openai.com/en/latest/algorithms/ddpg.html
 
 
 TODO:
-- important features
+- think out how to easier switch between different variants
+- important features and variants
 - hyperparameters
-- training curves
+- training curves and standard errors
 - action wrapper
