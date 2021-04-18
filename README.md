@@ -5,6 +5,7 @@ https://spinningup.openai.com/en/latest/algorithms/ddpg.html
 
 
 TODO:
+- simplify buffer
 - requirements
 - think out how to easier switch between different variants
 - important features and variants
