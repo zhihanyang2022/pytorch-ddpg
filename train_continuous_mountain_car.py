@@ -1,23 +1,18 @@
 import gym
-env = gym.make('MountainCarContinuous-v0')
-import time
-
-from replay_buffer import ReplayBuffer
+from replay_buffer import ReplayBuffer, Transition
 from params_pool import ParamsPool
 
-buf = ReplayBuffer(size=10000)
+env = gym.make('MountainCarContinuous-v0')
+buf = ReplayBuffer(capacity=60000)
 param = ParamsPool(
     input_dim=env.observation_space.shape[0],
     action_dim=env.action_space.shape[0],
-    action_lower_bounds=env.action_space.low,
-    action_upper_bounds=env.action_space.high,
-    noise_var=1.0,
-    noise_var_multiplier=0.95
+    noise_var=0.1,
+    noise_var_multiplier=1,
+    polyak=0.5
 )
-target_network_update_duration = 10
-max_steps = 200
-batch_size = 32
 
+batch_size = 64
 num_episodes = 1000  # enough for convergence
 
 for e in range(num_episodes):
@@ -25,50 +20,54 @@ for e in range(num_episodes):
     obs = env.reset()
 
     total_reward = 0
-    total_steps = 0
-
-    buf_sampled = False
+    total_updates = 0
 
     while True:
 
-        # ===== getting the tuple (s, a, r, s', done) =====
+        # ==================================================
+        # getting the tuple (s, a, r, s', done)
+        # ==================================================
 
         action = param.act(obs, noisy=True)
         next_obs, reward, done, _ = env.step(action)
         # no need to keep track of max time-steps, because the environment
-        # is wrapped with TimeLimit
+        # is wrapped with TimeLimit automatically (timeout after 1000 steps)
 
-        # logistics
         total_reward += reward
 
         mask = 0 if done else 1
 
-        # ===== storing it to the buffer =====
+        # ==================================================
+        # storing it to the buffer
+        # ==================================================
 
-        buf.push(obs, action, reward, next_obs, mask)
+        reward += 13 * abs(next_obs[1])
+        buf.push(Transition(obs, action, reward, next_obs, mask))
 
-        # ===== update the parameters =====
+        # ==================================================
+        # update the parameters
+        # ==================================================
 
-        # start = time.perf_counter()
-        if buf.filled is False and buf_sampled is False:
-            batch = buf.sample(batch_size=batch_size)
-            buf_sampled = True
-        if buf.filled:
-            param.update_q_prediction_net(batch)
+        if buf.ready_for(batch_size):
+            param.update_q_prediction_net_and_q_maximizing_net(buf.sample(batch_size))
+            param.update_q_target_net()
+            total_updates += 1
 
-        # ===== check done =====
+        # ==================================================
+        # check done
+        # ==================================================
 
         if done: break
 
         obs = next_obs
 
-    # ===== after an episode =====
+    # ==================================================
+    # after each episode
+    # ==================================================
 
-    if buf.filled:
-        if e % target_network_update_duration == 0:
-            param.update_q_target_net()
+    if buf.ready_for(batch_size):
         param.decay_noise_var()
 
-    print(f'Episode {e:3.0f} | Return {total_reward:5.3f} | Noise var {param.noise_var:5.3f}')
+    print(f'Episode {e:4.0f} | Return {total_reward:7.3f} | Noise var {param.noise_var:5.3f} | Updates {total_updates:4.0f}')
 
 env.close()
