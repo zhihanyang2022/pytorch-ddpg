@@ -9,19 +9,19 @@ Batch = namedtuple('Batch', 's a r s_prime mask')
 
 class ReplayBuffer(object):
 
-    def __init__(self, capacity):
+    def __init__(self, capacity: int):
         self.capacity = capacity
         self.memory = deque(maxlen=capacity)
 
-    def push(self, transition):
+    def push(self, transition: Transition) -> None:
         self.memory.appendleft(transition)
 
-    def ready_for(self, batch_size):
+    def ready_for(self, batch_size: int) -> bool:
         if len(self.memory) >= batch_size:
             return True
         return False
 
-    def sample(self, batch_size):
+    def sample(self, batch_size: int) -> Batch:
         batch = random.sample(self.memory, batch_size)
         batch = Batch(*zip(*batch))
         self.state = torch.tensor(batch.s, dtype = torch.float).view(batch_size, -1)
