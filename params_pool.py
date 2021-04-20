@@ -115,10 +115,10 @@ class ParamsPool:
 
         q_maximizing_a_prime = self.q_maximizing_net(batch.s_prime)
         # oh my, this bug in the following line took me 2 days or so to find it
-        # basically, if batch.mask has shape (64, ) and its multiplier has shape (64, 1)
+        # basically, if batch.done has shape (64, ) and its multiplier has shape (64, 1)
         # the result is a (64, 64) tensor, but this does not even cause an error!!!
         TARGETS = batch.r + \
-                  self.gamma * self.q_target_net(torch.cat([batch.s_prime, q_maximizing_a_prime], dim=1)) * batch.mask
+                  self.gamma * (1 - batch.done) * self.q_target_net(torch.cat([batch.s_prime, q_maximizing_a_prime], dim=1))
         Q_LEARNING_LOSS = torch.mean((PREDICTIONS - TARGETS.detach()) ** 2)
 
         # ==================================================

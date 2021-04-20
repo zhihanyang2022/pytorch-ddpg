@@ -1,11 +1,30 @@
+import argparse
+import numpy as np
 import gym
-from replay_buffer import ReplayBuffer, Transition
+from gym.wrappers import TimeLimit
+
+from replay_buffer import ReplayBuffer, Transition, EpisodeBuffer
 from params_pool import ParamsPool
 
-env = gym.make('MountainCarContinuous-v0')
+parser = argparse.ArgumentParser()
+parser.add_argument('--use_her', type=int)
+args = parser.parse_args()
+
+goal = 0.45  # aligned with the environment's force-done mechanism
+goal_dim = 1
+proj = lambda state: state[0]  # useful for creating hindsight goals from final states
+goal_achieved = lambda state, goal : proj(state) == goal  # maps from state to bool
+
+env = TimeLimit(gym.make('gym_foo:continuous-mountain-car-her-v0'), max_episode_steps=1000)
 buf = ReplayBuffer(capacity=60000)
+if args.use_her:
+    episode_buf = EpisodeBuffer(
+        goal=goal,
+        proj_fn=proj,
+        goal_achieved_fn=goal_achieved
+    )
 param = ParamsPool(
-    input_dim=env.observation_space.shape[0],
+    input_dim=env.observation_space.shape[0] + goal_dim,
     action_dim=env.action_space.shape[0],
     noise_var=0.1,
     noise_var_multiplier=1,
@@ -28,21 +47,24 @@ for e in range(num_episodes):
         # getting the tuple (s, a, r, s', done)
         # ==================================================
 
-        action = param.act(obs, noisy=True)
-        next_obs, reward, done, _ = env.step(action)
-        # no need to keep track of max time-steps, because the environment
-        # is wrapped with TimeLimit automatically (timeout after 1000 steps)
+        if args.use_her:
+            action = param.act(np.append(obs, goal), noisy=True)
+        else:
+            action = param.act(obs, noisy=True)
 
-        total_reward += reward
+        next_obs, _, done, _ = env.step(action)  # done means goal is achieved or timeout
+        reward = 0 if goal_achieved(obs, goal) else -1
 
-        mask = 0 if done else 1
+        total_reward += reward  # just for logging purposes
 
         # ==================================================
         # storing it to the buffer
         # ==================================================
 
-        reward += 13 * abs(next_obs[1])
-        buf.push(Transition(obs, action, reward, next_obs, mask))
+        if args.use_her:
+            episode_buf.push(Transition(obs, action, reward, next_obs, done))
+        else:
+            buf.push(Transition(obs, action, reward, next_obs, done))
 
         # ==================================================
         # update the parameters
@@ -65,9 +87,13 @@ for e in range(num_episodes):
     # after each episode
     # ==================================================
 
+    if args.use_her:
+        episode_buf.push_standard_and_her_transitions_to(buf)
+        episode_buf.reset()
+
     if buf.ready_for(batch_size):
         param.decay_noise_var()
 
-    print(f'Episode {e:4.0f} | Return {total_reward:7.3f} | Noise var {param.noise_var:5.3f} | Updates {total_updates:4.0f}')
+    print(f'Episode {e:4.0f} | Return {total_reward:15.10f} | Noise var {param.noise_var:5.3f} | Updates {total_updates:4.0f}')
 
 env.close()
