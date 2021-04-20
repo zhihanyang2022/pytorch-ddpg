@@ -1,0 +1,24 @@
+{
+    "os": "macOS-10.15.7-x86_64-i386-64bit",
+    "python": "3.8.5",
+    "heartbeatAt": "2021-04-20T14:20:27.411404",
+    "startedAt": "2021-04-20T14:20:23.345727",
+    "docker": null,
+    "cpu_count": 4,
+    "cuda": null,
+    "args": [
+        "--run_id=0"
+    ],
+    "state": "running",
+    "program": "train_pendulum.py",
+    "codePath": "train_pendulum.py",
+    "git": {
+        "remote": "https://github.com/zhihanyang2022/pytorch-ddpg",
+        "commit": "14e4c2b758c6cadfc1cdad3b8880bc7019fad8a5"
+    },
+    "email": "yangz2@carleton.edu",
+    "root": "/Users/yangzhihan/Desktop/projects/pytorch-ddpg",
+    "host": "zyang.local",
+    "username": "yangzhihan",
+    "executable": "/Users/yangzhihan/miniconda3/bin/python"
+}

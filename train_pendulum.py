@@ -4,6 +4,21 @@ from replay_buffer import ReplayBuffer, Transition
 from params_pool import ParamsPool
 from action_wrappers import AlgoToEnvActionScalingWrapper
 
+import wandb
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--run_id', type=int)
+args = parser.parse_args()
+
+wandb.init(
+    project='recurrent-ddpg-sac',
+    entity='pomdpr',
+    group='ddpg-pendulum-mdp',
+    settings=wandb.Settings(_disable_stats=True),
+    name=f'run_id={args.run_id}'
+)
+
 env = AlgoToEnvActionScalingWrapper(env=gym.make('Pendulum-v0'), scaling_factor=2)
 buf = ReplayBuffer(capacity=60000)
 param = ParamsPool(
@@ -66,6 +81,8 @@ for e in range(num_episodes):
     # ==================================================
     # after each episode
     # ==================================================
+
+    wandb.log({'return': total_reward})
 
     if buf.ready_for(batch_size):
         param.decay_noise_var()
