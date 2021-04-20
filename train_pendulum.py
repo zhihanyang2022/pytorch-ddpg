@@ -1,15 +1,17 @@
 import gym
+
 from replay_buffer import ReplayBuffer, Transition
 from params_pool import ParamsPool
+from action_wrappers import AlgoToEnvActionScalingWrapper
 
-env = gym.make('MountainCarContinuous-v0')
+env = AlgoToEnvActionScalingWrapper(env=gym.make('Pendulum-v0'), scaling_factor=2)
 buf = ReplayBuffer(capacity=60000)
 param = ParamsPool(
     input_dim=env.observation_space.shape[0],
     action_dim=env.action_space.shape[0],
-    noise_var=0.1,
+    noise_var=0.01,
     noise_var_multiplier=1,
-    polyak=0.5
+    polyak=0.95
 )
 
 batch_size = 64
@@ -41,7 +43,7 @@ for e in range(num_episodes):
         # storing it to the buffer
         # ==================================================
 
-        reward += 13 * abs(next_obs[1])
+        #reward += 13 * abs(next_obs[1])
         buf.push(Transition(obs, action, reward, next_obs, mask))
 
         # ==================================================
@@ -68,6 +70,6 @@ for e in range(num_episodes):
     if buf.ready_for(batch_size):
         param.decay_noise_var()
 
-    print(f'Episode {e:4.0f} | Return {total_reward:7.3f} | Noise var {param.noise_var:5.3f} | Updates {total_updates:4.0f}')
+    print(f'Episode {e:4.0f} | Return {total_reward:9.3f} | Noise var {param.noise_var:5.3f} | Updates {total_updates:4.0f}')
 
 env.close()
