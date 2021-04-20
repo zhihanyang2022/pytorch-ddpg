@@ -26,5 +26,5 @@ class ReplayBuffer(object):
         self.action = torch.tensor(batch.a, dtype = torch.float).view(batch_size, -1)
         self.next_state = torch.tensor(batch.s_prime, dtype = torch.float).view(batch_size, -1)
         self.reward = torch.tensor(batch.r, dtype = torch.float).view(batch_size, 1)
-        self.mask = torch.tensor(batch.mask, dtype = torch.long).view(batch_size, 1)
+        self.mask = torch.tensor(batch.mask, dtype = torch.float).view(batch_size, 1)
         return Batch(self.state, self.action, self.reward, self.next_state, self.mask)
