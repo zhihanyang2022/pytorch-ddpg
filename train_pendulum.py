@@ -68,7 +68,7 @@ if args.version in ['mdp', 'concat-pomdp']:
 
 elif args.version  == 'pomdp':
 
-    buf = RecurrentReplayBuffer(capacity=60000, estimated_episode_len=200, bptt_len=2)
+    buf = RecurrentReplayBuffer(capacity=60000, estimated_episode_len=200, bptt_len=3+2)
     param = RecurrentParamsPool(
         input_dim=input_dim,
         action_dim=env.action_space.shape[0],
