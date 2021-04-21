@@ -120,7 +120,7 @@ for e in range(num_episodes):
         if args.version in ['mdp', 'concat-pomdp']:
             buf.push(Transition(obs, action, reward, next_obs, mask))
         elif args.version == 'pomdp':
-            buf.push(RecurrentTransition(obs, action, reward, next_obs, mask, h.detach().numpy(), c.detach().numpy()))
+            buf.push(RecurrentTransition(obs, action, reward, next_obs, mask, h.detach().cpu().numpy(), c.detach().cpu().numpy()))
 
         # ==================================================
         # update the parameters
