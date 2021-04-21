@@ -139,13 +139,16 @@ class RecurrentParamsPool:
             burn_in_length = 3
             return item[:, burn_in_length:, :]
 
-        entire_history = torch.cat([batch.o, batch.o_prime[:,-1,:].unsqueeze(1)], dim=1)
+        entire_history = torch.cat([batch.o, batch.o_prime[:,-1,:].unsqueeze(1)], dim=1)  # (bs, burn_in_len+bptt_len+1, 1)
 
-        PREDICTIONS = self.critic(batch.o, batch.a)  # (bs, seq_len, 1)
-        PREDICTIONS = slice_burn_in(PREDICTIONS)
+        PREDICTIONS = self.critic(batch.o, batch.a)  # (bs, burn_in_len+bptt_len, 1)
+        print(PREDICTIONS.shape)
+        PREDICTIONS = slice_burn_in(PREDICTIONS)  # (bs, bptt_len, 1)
+        print(PREDICTIONS.shape)
 
-        TARGETS = batch.r + self.gamma * batch.mask * self.critic_target(entire_history, self.actor(entire_history))[:,1:,:]  # (bs, seq_len, 1)
-        TARGETS = slice_burn_in(TARGETS)
+        TARGETS = batch.r + \
+                  self.gamma * batch.mask * self.critic_target(entire_history, self.actor(entire_history))[:,1:,:]  # (bs, burn_in_len+bptt_len, 1)
+        TARGETS = slice_burn_in(TARGETS)  # (bs, bptt_len, 1)
 
         Q_LEARNING_LOSS = torch.mean((PREDICTIONS - TARGETS.detach()) ** 2)
 
