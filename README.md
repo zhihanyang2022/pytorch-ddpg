@@ -16,3 +16,6 @@ TODO:
 
 Credit:
 - I checked my code against https://github.com/Pechckin/MountainCar and borrowed its implementation of replay buffer which has faster sampling speed.
+
+Leadboard performances
+https://github.com/openai/gym/wiki/Leaderboard#pendulum-v0
