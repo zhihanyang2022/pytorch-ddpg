@@ -54,13 +54,15 @@ class RecurrentReplayBuffer(object):
 
         # print(len(batch.o), len(batch.o[0]))
 
-        o       = torch.tensor(np.array(batch.o      )).view(batch_size, self.bptt_len, -1).float()
-        a       = torch.tensor(np.array(batch.a      )).view(batch_size, self.bptt_len, -1).float()
-        r       = torch.tensor(np.array(batch.r      )).view(batch_size, self.bptt_len,  1).float()
-        o_prime = torch.tensor(np.array(batch.o_prime)).view(batch_size, self.bptt_len, -1).float()
-        masks   = torch.tensor(np.array(batch.mask   )).view(batch_size, self.bptt_len,  1).float()  # long does not work with some pytorch versions / cuda
-        h       = torch.tensor(np.array(batch.h      )).view(batch_size, self.bptt_len, -1).float()
-        c       = torch.tensor(np.array(batch.c      )).view(batch_size, self.bptt_len, -1).float()
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+        o       = torch.tensor(np.array(batch.o      )).view(batch_size, self.bptt_len, -1).float().to(device)
+        a       = torch.tensor(np.array(batch.a      )).view(batch_size, self.bptt_len, -1).float().to(device)
+        r       = torch.tensor(np.array(batch.r      )).view(batch_size, self.bptt_len,  1).float().to(device)
+        o_prime = torch.tensor(np.array(batch.o_prime)).view(batch_size, self.bptt_len, -1).float().to(device)
+        masks   = torch.tensor(np.array(batch.mask   )).view(batch_size, self.bptt_len,  1).float().to(device)  # long does not work with some pytorch versions / cuda
+        h       = torch.tensor(np.array(batch.h      )).view(batch_size, self.bptt_len, -1).float().to(device)
+        c       = torch.tensor(np.array(batch.c      )).view(batch_size, self.bptt_len, -1).float().to(device)
 
         # np.array(batch.s) has shape (batch_size, bptt_len, obs_dim)
 

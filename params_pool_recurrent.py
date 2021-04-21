@@ -77,11 +77,11 @@ class RecurrentParamsPool:
 
         # ===== networks =====
 
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        self.actor  = RecurrentActor(obs_dim=input_dim, action_dim=action_dim).to(device)
-        self.critic = RecurrentCritic(obs_dim=input_dim, action_dim=action_dim).to(device)
-        self.critic_target = RecurrentCritic(obs_dim=input_dim, action_dim=action_dim).to(device)
+        self.actor  = RecurrentActor(obs_dim=input_dim, action_dim=action_dim).to(self.device)
+        self.critic = RecurrentCritic(obs_dim=input_dim, action_dim=action_dim).to(self.device)
+        self.critic_target = RecurrentCritic(obs_dim=input_dim, action_dim=action_dim).to(self.device)
 
         self.critic_target.eval()  # we won't be passing gradients to this network
         self.critic_target.load_state_dict(self.critic.state_dict())
@@ -183,10 +183,10 @@ class RecurrentParamsPool:
 
     def act(self, obs: np.array, hidden: torch.tensor) -> np.array:
 
-        obs = torch.tensor(obs).unsqueeze(0).unsqueeze(0).float()
+        obs = torch.tensor(obs).unsqueeze(0).unsqueeze(0).float().to(self.device)
 
         greedy_action, new_hidden = self.actor(obs, hidden, output_new_hidden=True)
-        greedy_action = greedy_action.detach().numpy().reshape(-1)
+        greedy_action = greedy_action.detach().cpu().numpy().reshape(-1)
 
         return np.clip(greedy_action + self.noise_var * np.random.randn(self.action_dim), -1.0, 1.0), new_hidden
 
