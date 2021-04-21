@@ -136,7 +136,7 @@ class RecurrentParamsPool:
         # of shape (64, 100, 5) where 100 is the seq_len, the you get a tensor of shape (64, 100, 6).
 
         def slice_burn_in(item):
-            burn_in_length: 3
+            burn_in_length = 3
             return item[:, burn_in_length:, :]
 
         entire_history = torch.cat([batch.o, batch.o_prime[:,-1,:].unsqueeze(1)], dim=1)
