@@ -80,6 +80,8 @@ elif args.version  == 'pomdp':
 batch_size = 64  # TODO
 num_episodes = 1000
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 for e in range(num_episodes):
 
     obs = env.reset()
@@ -88,8 +90,8 @@ for e in range(num_episodes):
     total_updates = 0
 
     if args.version == 'pomdp':
-        h = torch.zeros((1, 1, 64))
-        c = torch.zeros((1, 1, 64))
+        h = torch.zeros((1, 1, 64)).to(device)
+        c = torch.zeros((1, 1, 64)).to(device)
 
     while True:
 
