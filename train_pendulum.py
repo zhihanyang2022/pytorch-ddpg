@@ -44,8 +44,10 @@ elif args.version == 'concat-pomdp':
 
 elif args.version == 'pomdp':
 
-    env = PartialObsWrapper(ActionScalingWrapper(env=gym.make('Pendulum-v0'), scaling_factor=2))
-    input_dim = env.observation_space.shape[0] - 1
+    # env = PartialObsWrapper(ActionScalingWrapper(env=gym.make('Pendulum-v0'), scaling_factor=2))
+    # input_dim = env.observation_space.shape[0] - 1
+    env = ActionScalingWrapper(env=gym.make('Pendulum-v0'), scaling_factor=2)
+    input_dim = env.observation_space.shape[0]
 
 else:
 
@@ -66,16 +68,16 @@ if args.version in ['mdp', 'concat-pomdp']:
 
 elif args.version  == 'pomdp':
 
-    buf = RecurrentReplayBuffer(capacity=60000, estimated_episode_len=200, bptt_len=3)
+    buf = RecurrentReplayBuffer(capacity=60000, estimated_episode_len=200, bptt_len=2)
     param = RecurrentParamsPool(
         input_dim=input_dim,
         action_dim=env.action_space.shape[0],
         noise_var=0.01,
         noise_var_multiplier=1,
-        polyak=0  # TODO
+        polyak=0.95  # TODO
     )
 
-batch_size = 64
+batch_size = 64  # TODO
 num_episodes = 1000
 
 for e in range(num_episodes):

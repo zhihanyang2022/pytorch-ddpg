@@ -8,7 +8,7 @@ def get_net(
         num_in:int,
         num_out:int,
         final_activation,  # e.g. nn.Tanh
-        num_hidden_layers:int=3,
+        num_hidden_layers:int=1,
         num_neurons_per_hidden_layer:int=64
     ) -> nn.Sequential:
 
@@ -32,17 +32,36 @@ def get_net(
 
     return nn.Sequential(*layers)
 
-class ObsBasedRecurrentNet(nn.Module):
+class RecurrentActor(nn.Module):
 
-    def __init__(self, num_in, num_out):
-        super(ObsBasedRecurrentNet, self).__init__()  # TODO
-        self.preprocessing_net = get_net(num_in=num_in, num_out=64, final_activation=nn.ReLU())
-        self.lstm = nn.LSTM(input_size=64, hidden_size=num_out, batch_first=True)
+    def __init__(self, obs_dim, action_dim):
+        super(RecurrentActor, self).__init__()
+        self.net1 = get_net(num_in=obs_dim, num_out=64, final_activation=nn.ReLU())
+        self.lstm = nn.LSTM(input_size=64, hidden_size=64, batch_first=True)
+        self.net2 = get_net(num_in=64, num_out=action_dim, final_activation=nn.Tanh())
 
-    def forward(self, obs, hidden):
-        out = self.preprocessing_net(obs)
+    def forward(self, obs, hidden=None, output_new_hidden=False):
+        out = self.net1(obs)
         out, new_hidden = self.lstm(out, hidden)
-        return out, new_hidden
+        out = self.net2(out)
+        if output_new_hidden:
+            return out, new_hidden
+        else:
+            return out
+
+class RecurrentCritic(nn.Module):
+
+    def __init__(self, obs_dim, action_dim):
+        super(RecurrentCritic, self).__init__()
+        self.net1 = get_net(num_in=obs_dim, num_out=64, final_activation=nn.ReLU())
+        self.lstm = nn.LSTM(input_size=64, hidden_size=64, batch_first=True)
+        self.net2 = get_net(num_in=64+action_dim, num_out=1, final_activation=None)
+
+    def forward(self, obs, action):
+        out = self.net1(obs)
+        out, new_hidden = self.lstm(out)
+        out = self.net2(torch.cat([out, action], dim=2))
+        return out
 
 class RecurrentParamsPool:
 
@@ -58,20 +77,18 @@ class RecurrentParamsPool:
 
         # ===== networks =====
 
-        self.obs_based_recurrent_net = ObsBasedRecurrentNet(num_in=input_dim, num_out=64)
-        self.q_prediction_net = get_net(num_in=64 + action_dim, num_out=1,          final_activation=None)
-        self.q_target_net =     get_net(num_in=64 + action_dim, num_out=1,          final_activation=None)
-        self.q_maximizing_net = get_net(num_in=64,              num_out=action_dim, final_activation=nn.Tanh())
+        self.actor  = RecurrentActor(obs_dim=input_dim, action_dim=action_dim)
+        self.critic = RecurrentCritic(obs_dim=input_dim, action_dim=action_dim)
+        self.critic_target = RecurrentCritic(obs_dim=input_dim, action_dim=action_dim)
 
-        self.q_target_net.eval()  # we won't be passing gradients to this network
-        self.q_target_net.load_state_dict(self.q_prediction_net.state_dict())
+        self.critic_target.eval()  # we won't be passing gradients to this network
+        self.critic_target.load_state_dict(self.critic.state_dict())
 
         # ===== optimizers =====
 
         # ref: https://pytorch.org/docs/stable/optim.html
-        self.obs_based_recurrent_net_optimizer = optim.Adam(self.obs_based_recurrent_net.parameters(), lr=1e-3)
-        self.q_prediction_net_optimizer = optim.Adam(self.q_prediction_net.parameters(), lr=1e-3)
-        self.q_maximizing_net_optimizer = optim.Adam(self.q_maximizing_net.parameters(), lr=1e-3)
+        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=1e-3)
+        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=1e-3)
 
         # ===== hyper-parameters =====
 
@@ -116,15 +133,13 @@ class RecurrentParamsPool:
         # - In the recurrent case, if you instantiate the same nn.Linear(5, 6) and pass to it a tensor
         # of shape (64, 100, 5) where 100 is the seq_len, the you get a tensor of shape (64, 100, 6).
 
-        s_proxy, _ = self.obs_based_recurrent_net(batch.o, (batch.h0, batch.c0))  # s_proxy's shape: (bs, seq_len, hidden_dim)
-        PREDICTIONS = self.q_prediction_net(torch.cat([s_proxy, batch.a], dim=2))  # PREDICTION's shape: (bs, seq_len, 1)
-        #print('Shape of PREDICTIONS:', PREDICTIONS.shape)
+        entire_history = torch.cat([batch.o, batch.o_prime[:,-1,:].unsqueeze(1)], dim=1)
 
-        s_prime_proxy, _ = self.obs_based_recurrent_net(batch.o_prime, (batch.h1, batch.c1))  # s_prime_proxy's shape: (bs, seq_len, hidden_dim)
-        q_maximizing_a_prime = self.q_maximizing_net(s_prime_proxy)  # q_maximizing_a_prime's shape: (bs, seq_len, action_dim)
-        TARGETS = batch.r + \
-                  self.gamma * batch.mask * self.q_target_net(torch.cat([s_prime_proxy, q_maximizing_a_prime], dim=2))  # TARGET's shape: (bs, seq_len, 1)
-        #print('Shape of TARGETS', TARGETS.shape)
+        PREDICTIONS = self.critic(batch.o, batch.a)  # (bs, seq_len, 1)
+        TARGETS = batch.r + self.gamma * batch.mask * self.critic_target(entire_history, self.actor(entire_history))[:,1:,:]  # (bs, seq_len, 1)
+
+        def slice_burn_in(item):
+            return item[:, burn_in_length:, :]
 
         Q_LEARNING_LOSS = torch.mean((PREDICTIONS - TARGETS.detach()) ** 2)
 
@@ -132,46 +147,39 @@ class RecurrentParamsPool:
         # policy loss (not present in Q-learning)
         # ==================================================
 
-        q_maximizing_a = self.q_maximizing_net(s_proxy)  # s_proxy need to be back-propagated through
-        Q_VALUES = self.q_prediction_net(torch.cat([s_proxy, q_maximizing_a], dim=2))  # again, s_proxy need to be back-propagated through
-
-        ACTOR_LOSS = - torch.mean(Q_VALUES)  # minimizing this loss is maximizing the q values
+        Q_VALUES = self.critic(batch.o, self.actor(batch.o))
+        ACTOR_LOSS = - torch.mean(Q_VALUES)
 
         # ==================================================
         # backpropagation and gradient descent
         # ==================================================
 
-        self.obs_based_recurrent_net_optimizer.zero_grad()  # need gradients from both losses
+        self.actor_optimizer.zero_grad()
+        ACTOR_LOSS.backward(retain_graph=True)  # gradient for actor
+        # inconveniently this back-props into the critic as well, but (see following line)
 
-        self.q_maximizing_net_optimizer.zero_grad()
-        ACTOR_LOSS.backward(retain_graph=True)  # gradient for q_maximizing_net and obs_based_recurrent_net
+        self.critic_optimizer.zero_grad()  # clear the gradient of the prediction net accumulated by ACTOR_LOSS.backward()
+        Q_LEARNING_LOSS.backward()  # gradient for critic only
 
-        # inconveniently this back-props into prediction net as well, but (see following line)
+        self.clip_gradient_like_huber(self.actor)
+        self.clip_gradient_like_huber(self.critic)
 
-        self.q_prediction_net_optimizer.zero_grad()  # clear the gradient of the prediction net accumulated by ACTOR_LOSS.backward()
-        Q_LEARNING_LOSS.backward()  # gradient for q_prediction_net and and obs_based_recurrent_net
-
-        self.clip_gradient_like_huber(self.q_prediction_net)
-        self.clip_gradient_like_huber(self.q_maximizing_net)
-        self.clip_gradient_like_huber(self.obs_based_recurrent_net)
-
-        self.q_prediction_net_optimizer.step()
-        self.q_maximizing_net_optimizer.step()
-        self.obs_based_recurrent_net_optimizer.step()
+        self.actor_optimizer.step()
+        self.critic_optimizer.step()
 
         # ==================================================
         # update the target network
         # ==================================================
 
-        for target_param, param in zip(self.q_target_net.parameters(), self.q_prediction_net.parameters()):
+        for target_param, param in zip(self.critic_target.parameters(), self.critic.parameters()):
             target_param.data.copy_(target_param.data * self.polyak + param.data * (1 - self.polyak))
 
     def act(self, obs: np.array, hidden: torch.tensor) -> np.array:
 
         obs = torch.tensor(obs).unsqueeze(0).unsqueeze(0).float()
-        state_proxy, new_hidden = self.obs_based_recurrent_net(obs, hidden)
 
-        greedy_action = self.q_maximizing_net(state_proxy).detach().numpy().reshape(-1)
+        greedy_action, new_hidden = self.actor(obs, hidden, output_new_hidden=True)
+        greedy_action = greedy_action.detach().numpy().reshape(-1)
 
         return np.clip(greedy_action + self.noise_var * np.random.randn(self.action_dim), -1.0, 1.0), new_hidden
 
