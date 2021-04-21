@@ -69,7 +69,7 @@ class RecurrentParamsPool:
         # ===== optimizers =====
 
         # ref: https://pytorch.org/docs/stable/optim.html
-        self.obs_based_recurrent_net_optimizer = optim.Adam(self.obs_based_recurrent_net.parameters(), lr=5e-4)
+        self.obs_based_recurrent_net_optimizer = optim.Adam(self.obs_based_recurrent_net.parameters(), lr=1e-3)
         self.q_prediction_net_optimizer = optim.Adam(self.q_prediction_net.parameters(), lr=1e-3)
         self.q_maximizing_net_optimizer = optim.Adam(self.q_maximizing_net.parameters(), lr=1e-3)
 
@@ -153,7 +153,7 @@ class RecurrentParamsPool:
 
         self.clip_gradient_like_huber(self.q_prediction_net)
         self.clip_gradient_like_huber(self.q_maximizing_net)
-        #self.clip_gradient_like_huber(self.obs_based_recurrent_net)
+        self.clip_gradient_like_huber(self.obs_based_recurrent_net)
 
         self.q_prediction_net_optimizer.step()
         self.q_maximizing_net_optimizer.step()
