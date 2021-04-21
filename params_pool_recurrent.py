@@ -35,13 +35,13 @@ def get_net(
 class ObsBasedRecurrentNet(nn.Module):
 
     def __init__(self, num_in, num_out):
-        super(ObsBasedRecurrentNet, self).__init__()
+        super(ObsBasedRecurrentNet, self).__init__()  # TODO
         self.preprocessing_net = get_net(num_in=num_in, num_out=64, final_activation=nn.ReLU())
         self.lstm = nn.LSTM(input_size=64, hidden_size=num_out, batch_first=True)
 
     def forward(self, obs, hidden):
         out = self.preprocessing_net(obs)
-        out, new_hidden = self.lstm(out, hx=hidden)
+        out, new_hidden = self.lstm(out, hidden)
         return out, new_hidden
 
 class RecurrentParamsPool:
@@ -69,8 +69,8 @@ class RecurrentParamsPool:
         # ===== optimizers =====
 
         # ref: https://pytorch.org/docs/stable/optim.html
-        self.obs_based_recurrent_net_optimizer = optim.Adam(self.obs_based_recurrent_net.parameters(), lr=1e-3)
-        self.q_prediction_net_optimizer = optim.Adam(self.q_prediction_net.parameters(), lr=5e-4)
+        self.obs_based_recurrent_net_optimizer = optim.Adam(self.obs_based_recurrent_net.parameters(), lr=5e-4)
+        self.q_prediction_net_optimizer = optim.Adam(self.q_prediction_net.parameters(), lr=1e-3)
         self.q_maximizing_net_optimizer = optim.Adam(self.q_maximizing_net.parameters(), lr=1e-3)
 
         # ===== hyper-parameters =====
@@ -118,11 +118,13 @@ class RecurrentParamsPool:
 
         s_proxy, _ = self.obs_based_recurrent_net(batch.o, (batch.h0, batch.c0))  # s_proxy's shape: (bs, seq_len, hidden_dim)
         PREDICTIONS = self.q_prediction_net(torch.cat([s_proxy, batch.a], dim=2))  # PREDICTION's shape: (bs, seq_len, 1)
+        #print('Shape of PREDICTIONS:', PREDICTIONS.shape)
 
         s_prime_proxy, _ = self.obs_based_recurrent_net(batch.o_prime, (batch.h1, batch.c1))  # s_prime_proxy's shape: (bs, seq_len, hidden_dim)
         q_maximizing_a_prime = self.q_maximizing_net(s_prime_proxy)  # q_maximizing_a_prime's shape: (bs, seq_len, action_dim)
         TARGETS = batch.r + \
                   self.gamma * batch.mask * self.q_target_net(torch.cat([s_prime_proxy, q_maximizing_a_prime], dim=2))  # TARGET's shape: (bs, seq_len, 1)
+        #print('Shape of TARGETS', TARGETS.shape)
 
         Q_LEARNING_LOSS = torch.mean((PREDICTIONS - TARGETS.detach()) ** 2)
 
@@ -142,14 +144,16 @@ class RecurrentParamsPool:
         self.obs_based_recurrent_net_optimizer.zero_grad()  # need gradients from both losses
 
         self.q_maximizing_net_optimizer.zero_grad()
-        ACTOR_LOSS.backward(retain_graph=True)  # inconveniently this back-props into prediction net as well, but (see following line)
+        ACTOR_LOSS.backward(retain_graph=True)  # gradient for q_maximizing_net and obs_based_recurrent_net
+
+        # inconveniently this back-props into prediction net as well, but (see following line)
 
         self.q_prediction_net_optimizer.zero_grad()  # clear the gradient of the prediction net accumulated by ACTOR_LOSS.backward()
-        Q_LEARNING_LOSS.backward()
+        Q_LEARNING_LOSS.backward()  # gradient for q_prediction_net and and obs_based_recurrent_net
 
         self.clip_gradient_like_huber(self.q_prediction_net)
         self.clip_gradient_like_huber(self.q_maximizing_net)
-        self.clip_gradient_like_huber(self.obs_based_recurrent_net)
+        #self.clip_gradient_like_huber(self.obs_based_recurrent_net)
 
         self.q_prediction_net_optimizer.step()
         self.q_maximizing_net_optimizer.step()

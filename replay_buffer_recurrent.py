@@ -4,10 +4,10 @@ import torch
 from collections import namedtuple, deque
 
 RecurrentTransition = namedtuple('RecurrentTransition', 'o a r o_prime mask h c')
-RecurrentWindow     = namedtuple('RecurrentTransitions', 'o a r o_prime mask h c')
-RecurrentBatch      = namedtuple('RecurrentTransitions', 'o a r o_prime mask h c')
+RecurrentWindow     = namedtuple('RecurrentWindow', 'o a r o_prime mask h c')
+RecurrentBatch      = namedtuple('RecurrentBatch', 'o a r o_prime mask h c')
 
-RecurrentBatchForTraining = namedtuple('RecurrentBatch', 'o a r o_prime mask h0 c0 h1 c1')
+RecurrentBatchForTraining = namedtuple('RecurrentBatchForTraining', 'o a r o_prime mask h0 c0 h1 c1')
 
 class RecurrentReplayBuffer(object):
 
@@ -19,9 +19,9 @@ class RecurrentReplayBuffer(object):
     """
 
     def __init__(self, capacity: int, estimated_episode_len: int, bptt_len: int):
-        max_episodes_to_store = capacity // estimated_episode_len
+        self.max_episodes_to_store = capacity // estimated_episode_len
         self.episode  = []
-        self.episodes = deque(maxlen=max_episodes_to_store)
+        self.episodes = deque(maxlen=self.max_episodes_to_store)
         self.bptt_len = bptt_len
 
     def push(self, transition: RecurrentTransition) -> None:
@@ -32,7 +32,7 @@ class RecurrentReplayBuffer(object):
             self.episode = []
 
     def ready_for(self, batch_size: int) -> bool:
-        if len(self.episodes) >= batch_size:
+        if len(self.episodes) >= min(batch_size, self.max_episodes_to_store):
             return True
         return False
 
@@ -51,6 +51,8 @@ class RecurrentReplayBuffer(object):
             windows.append(window)
 
         batch = RecurrentBatch(*zip(*windows))  # each field contains a list of lists (each correspond to a window) of items
+
+        # print(len(batch.o), len(batch.o[0]))
 
         o       = torch.tensor(np.array(batch.o      )).view(batch_size, self.bptt_len, -1).float()
         a       = torch.tensor(np.array(batch.a      )).view(batch_size, self.bptt_len, -1).float()

@@ -78,9 +78,9 @@ class ParamsPool:
         # q_target_net    : (s, a_) --- network --> scalar
         # q_maximizing_net: s --- network --> a_ (in (0, 1) and hence need to undo normalization)
 
-        self.q_prediction_net = get_net(num_in=input_dim + action_dim, num_out=1,          final_activation=None).apply(weights)
+        self.q_prediction_net = get_net(num_in=input_dim + action_dim, num_out=1,          final_activation=None)#.apply(weights)
         self.q_target_net =     get_net(num_in=input_dim + action_dim, num_out=1,          final_activation=None)
-        self.q_maximizing_net = get_net(num_in=input_dim,              num_out=action_dim, final_activation=nn.Tanh()).apply(weights)
+        self.q_maximizing_net = get_net(num_in=input_dim,              num_out=action_dim, final_activation=nn.Tanh())#.apply(weights)
 
         self.q_target_net.eval()  # we won't be passing gradients to this network
         self.q_target_net.load_state_dict(self.q_prediction_net.state_dict())
