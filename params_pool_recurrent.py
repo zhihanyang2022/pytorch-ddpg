@@ -162,7 +162,7 @@ class RecurrentParamsPool:
         # ==================================================
 
         self.actor_optimizer.zero_grad()
-        ACTOR_LOSS.backward(retain_graph=True)  # gradient for actor
+        ACTOR_LOSS.backward()  # gradient for actor
         # inconveniently this back-props into the critic as well, but (see following line)
 
         self.critic_optimizer.zero_grad()  # clear the gradient of the prediction net accumulated by ACTOR_LOSS.backward()
