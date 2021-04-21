@@ -27,7 +27,7 @@ args = parser.parse_args()
 
 if args.version == 'mdp':
 
-    env = ActionScalingWrapper(env=gym.make('Pendulum-v0'), scaling_factor=2)
+    env = ActionScalingWrapper(env=gym.make('Pendulum-v0'), scaling_factor=3 + 2)
     input_dim = env.observation_space.shape[0]
 
 elif args.version == 'concat-pomdp':

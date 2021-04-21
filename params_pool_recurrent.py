@@ -77,9 +77,11 @@ class RecurrentParamsPool:
 
         # ===== networks =====
 
-        self.actor  = RecurrentActor(obs_dim=input_dim, action_dim=action_dim)
-        self.critic = RecurrentCritic(obs_dim=input_dim, action_dim=action_dim)
-        self.critic_target = RecurrentCritic(obs_dim=input_dim, action_dim=action_dim)
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+        self.actor  = RecurrentActor(obs_dim=input_dim, action_dim=action_dim).to(device)
+        self.critic = RecurrentCritic(obs_dim=input_dim, action_dim=action_dim).to(device)
+        self.critic_target = RecurrentCritic(obs_dim=input_dim, action_dim=action_dim).to(device)
 
         self.critic_target.eval()  # we won't be passing gradients to this network
         self.critic_target.load_state_dict(self.critic.state_dict())
@@ -133,13 +135,17 @@ class RecurrentParamsPool:
         # - In the recurrent case, if you instantiate the same nn.Linear(5, 6) and pass to it a tensor
         # of shape (64, 100, 5) where 100 is the seq_len, the you get a tensor of shape (64, 100, 6).
 
+        def slice_burn_in(item):
+            burn_in_length: 3
+            return item[:, burn_in_length:, :]
+
         entire_history = torch.cat([batch.o, batch.o_prime[:,-1,:].unsqueeze(1)], dim=1)
 
         PREDICTIONS = self.critic(batch.o, batch.a)  # (bs, seq_len, 1)
-        TARGETS = batch.r + self.gamma * batch.mask * self.critic_target(entire_history, self.actor(entire_history))[:,1:,:]  # (bs, seq_len, 1)
+        PREDICTIONS = slice_burn_in(PREDICTIONS)
 
-        def slice_burn_in(item):
-            return item[:, burn_in_length:, :]
+        TARGETS = batch.r + self.gamma * batch.mask * self.critic_target(entire_history, self.actor(entire_history))[:,1:,:]  # (bs, seq_len, 1)
+        TARGETS = slice_burn_in(TARGETS)
 
         Q_LEARNING_LOSS = torch.mean((PREDICTIONS - TARGETS.detach()) ** 2)
 
@@ -148,6 +154,7 @@ class RecurrentParamsPool:
         # ==================================================
 
         Q_VALUES = self.critic(batch.o, self.actor(batch.o))
+        Q_VALUES = slice_burn_in(Q_VALUES)
         ACTOR_LOSS = - torch.mean(Q_VALUES)
 
         # ==================================================
