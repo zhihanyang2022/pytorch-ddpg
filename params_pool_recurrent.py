@@ -142,9 +142,7 @@ class RecurrentParamsPool:
         entire_history = torch.cat([batch.o, batch.o_prime[:,-1,:].unsqueeze(1)], dim=1)  # (bs, burn_in_len+bptt_len+1, 1)
 
         PREDICTIONS = self.critic(batch.o, batch.a)  # (bs, burn_in_len+bptt_len, 1)
-        print(PREDICTIONS.shape)
         PREDICTIONS = slice_burn_in(PREDICTIONS)  # (bs, bptt_len, 1)
-        print(PREDICTIONS.shape)
 
         TARGETS = batch.r + \
                   self.gamma * batch.mask * self.critic_target(entire_history, self.actor(entire_history))[:,1:,:]  # (bs, burn_in_len+bptt_len, 1)
