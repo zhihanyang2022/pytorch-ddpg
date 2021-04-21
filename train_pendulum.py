@@ -74,7 +74,7 @@ elif args.version  == 'pomdp':
         action_dim=env.action_space.shape[0],
         noise_var=0.01,
         noise_var_multiplier=1,
-        polyak=0.95  # TODO
+        polyak=0  # TODO
     )
 
 batch_size = 64  # TODO
