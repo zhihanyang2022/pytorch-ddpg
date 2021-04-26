@@ -23,17 +23,20 @@ args = parser.parse_args()
 wandb.init(
     project='recurrent-ddpg-sac',
     entity='pomdpr',
-    group=f'ddpg-recurrent-pendulum-pomdp',
+    group=f'ddpg-recurrent-pendulum-mdp',
     settings=wandb.Settings(_disable_stats=True),
     name=f'run_id={args.run_id}'
 )
 
-env = PartialObsWrapper(ActionScalingWrapper(env=gym.make('Pendulum-v0'), scaling_factor=2))
-input_dim = env.observation_space.shape[0] - 1
+#env = PartialObsWrapper(ActionScalingWrapper(env=gym.make('Pendulum-v0'), scaling_factor=2))
+#input_dim = env.observation_space.shape[0] - 1
+
+env = ActionScalingWrapper(env=gym.make('Pendulum-v0'), scaling_factor=2)
+input_dim = env.observation_space.shape[0]
 
 # ==================================================
 
-buf = EpisodicReplayBuffer(capacity=1000, episode_len=200, obs_dim=input_dim, action_dim=1)
+buf = EpisodicReplayBuffer(capacity=5000, episode_len=200, obs_dim=input_dim, action_dim=1)
 param = RecurrentParamsPool(
     input_dim=input_dim,  # different for different versions of the environment
     action_dim=env.action_space.shape[0],
