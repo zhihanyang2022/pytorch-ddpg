@@ -28,11 +28,11 @@ wandb.init(
     name=f'run_id={args.run_id}'
 )
 
-#env = PartialObsWrapper(ActionScalingWrapper(env=gym.make('Pendulum-v0'), scaling_factor=2))
-#input_dim = env.observation_space.shape[0] - 1
+env = PartialObsWrapper(ActionScalingWrapper(env=gym.make('Pendulum-v0'), scaling_factor=2))
+input_dim = env.observation_space.shape[0] - 1
 
-env = ActionScalingWrapper(env=gym.make('Pendulum-v0'), scaling_factor=2)
-input_dim = env.observation_space.shape[0]
+# env = ActionScalingWrapper(env=gym.make('Pendulum-v0'), scaling_factor=2)
+# input_dim = env.observation_space.shape[0]
 
 # ==================================================
 
@@ -47,7 +47,7 @@ param = RecurrentParamsPool(
 
 
 batch_size = 64
-num_episodes = 2000
+num_episodes = 5000
 
 for e in range(num_episodes):
 
