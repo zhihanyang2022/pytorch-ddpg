@@ -23,7 +23,7 @@ args = parser.parse_args()
 wandb.init(
     project='recurrent-ddpg-sac',
     entity='pomdpr',
-    group=f'ddpg-recurrent-pendulum-mdp',
+    group=f'ddpg-recurrent-pendulum-pomdp',
     settings=wandb.Settings(_disable_stats=True),
     name=f'run_id={args.run_id}'
 )
