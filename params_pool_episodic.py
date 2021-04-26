@@ -35,41 +35,25 @@ def get_net(
 def cat_features(a, b):
     return torch.cat([a, b], dim=2)
 
-class RecurrentActor(nn.Module):
+class EpisodicActor(nn.Module):
 
     def __init__(self, obs_dim, action_dim):
-        super(RecurrentActor, self).__init__()
-        self.first = get_net(num_in=obs_dim, num_out=64, final_activation=nn.ReLU())
-        self.lstm = nn.LSTM(input_size=64, hidden_size=64, batch_first=True)
-        self.final = get_net(num_in=64, num_out=action_dim, num_hidden_layers=1, final_activation=nn.Tanh())
+        super(EpisodicActor, self).__init__()
+        self.net = get_net(num_in=obs_dim, num_out=action_dim, final_activation=nn.Tanh())
 
     def forward(self, o):
-        out = self.first(o)
-        out, _ = self.lstm(out)
-        actions = self.final(out)
-        return actions
+        return self.net(o)
 
-    def forward_online(self, o, hidden):
-        out = self.first(o)
-        out, hidden = self.lstm(out, hidden)
-        actions = self.final(out)
-        return actions, hidden
-
-class RecurrentCritic(nn.Module):
+class EpisodicCritic(nn.Module):
 
     def __init__(self, obs_dim, action_dim):
-        super(RecurrentCritic, self).__init__()
-        self.first = get_net(num_in=obs_dim+action_dim, num_out=64, final_activation=nn.ReLU())
-        self.lstm = nn.LSTM(input_size=64, hidden_size=64, batch_first=True)
-        self.final = get_net(num_in=64, num_out=1, num_hidden_layers=1, final_activation=None)
+        super(EpisodicCritic, self).__init__()
+        self.net = get_net(num_in=obs_dim+action_dim, num_out=action_dim, final_activation=None)
 
     def forward(self, o, a):
-        out = self.first(torch.cat([o, a], dim=2))
-        out, _ = self.lstm(out)
-        q_values = self.final(out)
-        return q_values
+        return self.net(torch.cat([o, a], dim=2))
 
-class RecurrentParamsPool:
+class EpisodicParamsPool:
 
     def __init__(self,
             input_dim:int,
@@ -83,9 +67,9 @@ class RecurrentParamsPool:
 
         # ===== networks =====
 
-        self.actor  = RecurrentActor(obs_dim=input_dim, action_dim=action_dim)
-        self.critic = RecurrentCritic(obs_dim=input_dim, action_dim=action_dim)
-        self.critic_target = RecurrentCritic(obs_dim=input_dim, action_dim=action_dim)
+        self.actor  = EpisodicActor(obs_dim=input_dim, action_dim=action_dim)
+        self.critic = EpisodicCritic(obs_dim=input_dim, action_dim=action_dim)
+        self.critic_target = EpisodicCritic(obs_dim=input_dim, action_dim=action_dim)
 
         self.critic_target.eval()  # we won't be passing gradients to this network
         self.critic_target.load_state_dict(self.critic.state_dict())
@@ -161,16 +145,12 @@ class RecurrentParamsPool:
         for target_param, param in zip(self.critic_target.parameters(), self.critic.parameters()):
             target_param.data.copy_(target_param.data * self.polyak + param.data * (1 - self.polyak))
 
-    def reset_hidden(self):
-        """Should be called at the beginning of each episode"""
-        self.hidden = (torch.zeros(1, 1, 64), torch.zeros(1, 1, 64))
-
     def act(self, o) -> np.array:
 
-        o = torch.tensor(o).unsqueeze(0).unsqueeze(0).float()  # (1, 1, obs_dim)
+        o = torch.tensor(o).unsqueeze(0).float()
 
         with torch.no_grad():
-            greedy_action, self.hidden = self.actor.forward_online(o, self.hidden)
+            greedy_action = self.actor(o)
         greedy_action = greedy_action.cpu().numpy().reshape(-1)
 
         return np.clip(greedy_action + self.noise_var * np.random.randn(self.action_dim), -1.0, 1.0)

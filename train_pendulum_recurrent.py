@@ -9,33 +9,32 @@ from replay_buffer import ReplayBuffer, Transition
 from replay_buffer_episodic import EpisodicReplayBuffer
 
 from params_pool import ParamsPool
-from params_pool_episodic import EpisodicParamsPool
+from params_pool_recurrent import RecurrentParamsPool
 
-from wrappers import ActionScalingWrapper, PartialObsWrapper, PartialObsConcatWrapper
+from wrappers import ActionScalingWrapper, PartialObsWrapper
 
 import wandb
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--version', type=str)  # can be mdp, concat-pomdp, pomdp
 parser.add_argument('--run_id', type=int)
 args = parser.parse_args()
 
-# wandb.init(
-#     project='recurrent-ddpg-sac',
-#     entity='pomdpr',
-#     group=f'ddpg-pendulum-{args.version}',
-#     settings=wandb.Settings(_disable_stats=True),
-#     name=f'run_id={args.run_id}'
-# )
+wandb.init(
+    project='recurrent-ddpg-sac',
+    entity='pomdpr',
+    group=f'ddpg-recurrent-pendulum-pomdp',
+    settings=wandb.Settings(_disable_stats=True),
+    name=f'run_id={args.run_id}'
+)
 
-env = ActionScalingWrapper(env=gym.make('Pendulum-v0'), scaling_factor=2)
-input_dim = env.observation_space.shape[0]
+env = PartialObsWrapper(ActionScalingWrapper(env=gym.make('Pendulum-v0'), scaling_factor=2))
+input_dim = env.observation_space.shape[0] - 1
 
 # ==================================================
 
-buf = EpisodicReplayBuffer(capacity=1000, episode_len=200, obs_dim=3, action_dim=1)
-param = EpisodicParamsPool(
+buf = EpisodicReplayBuffer(capacity=1000, episode_len=200, obs_dim=input_dim, action_dim=1)
+param = RecurrentParamsPool(
     input_dim=input_dim,  # different for different versions of the environment
     action_dim=env.action_space.shape[0],
     noise_var=0.01,
@@ -45,11 +44,12 @@ param = EpisodicParamsPool(
 
 
 batch_size = 64
-num_episodes = 1000
+num_episodes = 2000
 
 for e in range(num_episodes):
 
     obs = env.reset()
+    param.reset_hidden()
 
     total_reward = 0
     total_updates = 0
@@ -95,7 +95,7 @@ for e in range(num_episodes):
     # after each episode
     # ==================================================
 
-    # wandb.log({'return': total_reward})
+    wandb.log({'return': total_reward})
 
     if buf.ready_for(batch_size):
         param.decay_noise_var()

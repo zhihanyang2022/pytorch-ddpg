@@ -8,7 +8,7 @@ def get_net(
         num_in:int,
         num_out:int,
         final_activation,  # e.g. nn.Tanh
-        num_hidden_layers:int=3,
+        num_hidden_layers:int=6,
         num_neurons_per_hidden_layer:int=64
     ) -> nn.Sequential:
 
@@ -31,10 +31,6 @@ def get_net(
         layers.append(final_activation)
 
     return nn.Sequential(*layers)
-
-def weights(layer):
-    if isinstance(layer, nn.Linear):
-        nn.init.xavier_normal_(layer.weight)
 
 class ParamsPool:
 
@@ -78,9 +74,9 @@ class ParamsPool:
         # q_target_net    : (s, a_) --- network --> scalar
         # q_maximizing_net: s --- network --> a_ (in (0, 1) and hence need to undo normalization)
 
-        self.q_prediction_net = get_net(num_in=input_dim + action_dim, num_out=1,          final_activation=None)#.apply(weights)
+        self.q_prediction_net = get_net(num_in=input_dim + action_dim, num_out=1,          final_activation=None)
         self.q_target_net =     get_net(num_in=input_dim + action_dim, num_out=1,          final_activation=None)
-        self.q_maximizing_net = get_net(num_in=input_dim,              num_out=action_dim, final_activation=nn.Tanh())#.apply(weights)
+        self.q_maximizing_net = get_net(num_in=input_dim,              num_out=action_dim, final_activation=nn.Tanh())
 
         self.q_target_net.eval()  # we won't be passing gradients to this network
         self.q_target_net.load_state_dict(self.q_prediction_net.state_dict())
@@ -88,7 +84,7 @@ class ParamsPool:
         # ===== optimizers =====
 
         # ref: https://pytorch.org/docs/stable/optim.html
-        self.q_prediction_net_optimizer = optim.Adam(self.q_prediction_net.parameters(), lr=5e-4)
+        self.q_prediction_net_optimizer = optim.Adam(self.q_prediction_net.parameters(), lr=1e-3)
         self.q_maximizing_net_optimizer = optim.Adam(self.q_maximizing_net.parameters(), lr=1e-3)
 
         # ===== hyper-parameters =====
