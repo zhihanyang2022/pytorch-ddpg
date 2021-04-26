@@ -8,8 +8,8 @@ def get_net(
         num_in:int,
         num_out:int,
         final_activation,  # e.g. nn.Tanh
-        num_hidden_layers: int=5,
-        num_neurons_per_hidden_layer: int=64
+        num_hidden_layers: int=2,
+        num_neurons_per_hidden_layer: int=256
     ) -> nn.Sequential:
 
     layers = []
@@ -41,7 +41,7 @@ class RecurrentActor(nn.Module):
         super(RecurrentActor, self).__init__()
         self.first = get_net(num_in=obs_dim, num_out=64, final_activation=nn.ReLU())
         self.lstm = nn.LSTM(input_size=64, hidden_size=64, batch_first=True)
-        self.final = get_net(num_in=64, num_out=action_dim, num_hidden_layers=1, final_activation=nn.Tanh())
+        self.final = nn.Sequential(nn.Linear(64, action_dim), nn.Tanh())
 
     def forward(self, o):
         out = self.first(o)
@@ -61,7 +61,7 @@ class RecurrentCritic(nn.Module):
         super(RecurrentCritic, self).__init__()
         self.first = get_net(num_in=obs_dim+action_dim, num_out=64, final_activation=nn.ReLU())
         self.lstm = nn.LSTM(input_size=64, hidden_size=64, batch_first=True)
-        self.final = get_net(num_in=64, num_out=1, num_hidden_layers=1, final_activation=None)
+        self.final = nn.Linear(64, 1)
 
     def forward(self, o, a):
         out = self.first(torch.cat([o, a], dim=2))

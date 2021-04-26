@@ -54,8 +54,6 @@ for e in range(num_episodes):
     total_reward = 0
     total_updates = 0
 
-    num_steps = 0
-
     while True:
 
         # ==================================================
@@ -65,7 +63,6 @@ for e in range(num_episodes):
         action = param.act(obs)
 
         next_obs, reward, done, _ = env.step(action)
-        num_steps += 1
 
         total_reward += reward
 
@@ -78,10 +75,6 @@ for e in range(num_episodes):
         # ==================================================
         # update the parameters
         # ==================================================
-
-        if buf.ready_for(batch_size) and (num_steps % 50 == 0):
-            param.update_networks(buf.sample(batch_size))
-            total_updates += 1
 
         # ==================================================
         # check done
@@ -96,6 +89,11 @@ for e in range(num_episodes):
     # ==================================================
 
     wandb.log({'return': total_reward})
+
+    if buf.ready_for(batch_size):
+        for i in range(5):
+            param.update_networks(buf.sample(batch_size))
+            total_updates += 1
 
     if buf.ready_for(batch_size):
         param.decay_noise_var()
