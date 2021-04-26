@@ -47,7 +47,7 @@ param = RecurrentParamsPool(
 
 
 batch_size = 64
-num_episodes = 5000
+num_episodes = 5000 * 3  # 3 million transitions; 5000 * 3 * 5 updates
 
 for e in range(num_episodes):
 
