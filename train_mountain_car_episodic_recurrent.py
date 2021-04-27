@@ -47,7 +47,7 @@ param = RecurrentParamsPool(
     action_dim=action_dim,
     noise_var=0.01,
     noise_var_multiplier=1,
-    polyak=0.95
+    polyak=0.995  # changed to improve stability
 )
 
 

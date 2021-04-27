@@ -74,7 +74,7 @@ class RecurrentParamsPool:
     def __init__(self,
             input_dim:int,
             action_dim:int,
-            gamma:float=0.95,
+            gamma:float=0.99,  # changed to improve stability
             noise_var:float=0.1,
             noise_var_multiplier:float=0.95,
             noise_var_min:float=0,
