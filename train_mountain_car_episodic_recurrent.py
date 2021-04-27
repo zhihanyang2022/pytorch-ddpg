@@ -18,8 +18,7 @@ wandb.init(
     entity='pomdpr',
     group=f'ddpg-recurrent-mountain-car-pomdp-episodic',
     settings=wandb.Settings(_disable_stats=True),
-    name=f'run_id={args.run_id}',
-    monitor_gym=True
+    name=f'run_id={args.run_id}'
 )
 
 # env = Monitor(
