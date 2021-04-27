@@ -33,7 +33,7 @@ env = TimeLimit(
     ActionScalingWrapper(gym.make('gym_custom:pomdp-mountain-car-episodic-easy-v0'), scaling_factor=15),
     max_episode_steps=15  # enough for this one
 )
-input_dim = 3
+input_dim = 1
 action_dim = 1
 
 # env = ActionScalingWrapper(env=gym.make('Pendulum-v0'), scaling_factor=2)
