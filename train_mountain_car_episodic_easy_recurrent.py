@@ -41,7 +41,7 @@ action_dim = 1
 
 # ==================================================
 
-buf = EpisodicReplayBuffer(capacity=5000, episode_len=200, obs_dim=input_dim, action_dim=action_dim)
+buf = EpisodicReplayBuffer(capacity=5000, episode_len=100, obs_dim=input_dim, action_dim=action_dim)
 param = RecurrentParamsPool(
     input_dim=input_dim,
     action_dim=action_dim,
