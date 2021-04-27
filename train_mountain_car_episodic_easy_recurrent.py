@@ -31,7 +31,7 @@ wandb.init(
 # )
 env = TimeLimit(
     ActionScalingWrapper(gym.make('gym_custom:pomdp-mountain-car-episodic-easy-v0'), scaling_factor=15),
-    max_episode_steps=100  # enough for this one
+    max_episode_steps=25  # enough for this one
 )
 input_dim = 3
 action_dim = 1
@@ -41,12 +41,11 @@ action_dim = 1
 
 # ==================================================
 
-buf = EpisodicReplayBuffer(capacity=5000, episode_len=100, obs_dim=input_dim, action_dim=action_dim)
+buf = EpisodicReplayBuffer(capacity=5000, episode_len=25, obs_dim=input_dim, action_dim=action_dim)
 param = RecurrentParamsPool(
     input_dim=input_dim,
     action_dim=action_dim
 )
-
 
 batch_size = 64
 num_episodes = 5000 * 3  # 3 million transitions; 5000 * 3 * 5 updates
