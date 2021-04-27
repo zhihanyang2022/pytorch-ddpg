@@ -75,17 +75,22 @@ class RecurrentParamsPool:
             input_dim:int,
             action_dim:int,
             gamma:float=0.99,  # changed to improve stability
-            noise_var:float=0.1,
-            noise_var_multiplier:float=0.95,
+            noise_var:float=0.01,
+            noise_var_multiplier:float=1.0,
             noise_var_min:float=0,
-            polyak:float=0.90
+            polyak:float=0.999  # from DDPG paper
         ):
 
         # ===== networks =====
 
-        self.actor  = RecurrentActor(obs_dim=input_dim, action_dim=action_dim)
+        self.actor = RecurrentActor(obs_dim=input_dim, action_dim=action_dim)
+        self.actor_target = RecurrentActor(obs_dim=input_dim, action_dim=action_dim)
+
         self.critic = RecurrentCritic(obs_dim=input_dim, action_dim=action_dim)
         self.critic_target = RecurrentCritic(obs_dim=input_dim, action_dim=action_dim)
+
+        self.actor_target.eval()
+        self.actor_target.load_state_dict(self.actor.state_dict())
 
         self.critic_target.eval()  # we won't be passing gradients to this network
         self.critic_target.load_state_dict(self.critic.state_dict())
@@ -126,7 +131,7 @@ class RecurrentParamsPool:
 
             TARGETS = batch.r + \
                       self.gamma * (1 - batch.d) * \
-                      self.critic_target(batch.o, self.actor(batch.o))[:,1:,:]
+                      self.critic_target(batch.o, self.actor_target(batch.o))[:,1:,:]
 
         Q_LEARNING_LOSS = torch.mean((PREDICTIONS - TARGETS.detach()) ** 2)
 
@@ -157,6 +162,9 @@ class RecurrentParamsPool:
         # ==================================================
         # update the target network
         # ==================================================
+
+        for target_param, param in zip(self.actor_target.parameters(), self.actor.parameters()):
+            target_param.data.copy_(target_param.data * self.polyak + param.data * (1 - self.polyak))
 
         for target_param, param in zip(self.critic_target.parameters(), self.critic.parameters()):
             target_param.data.copy_(target_param.data * self.polyak + param.data * (1 - self.polyak))

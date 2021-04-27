@@ -44,10 +44,7 @@ action_dim = 1
 buf = EpisodicReplayBuffer(capacity=5000, episode_len=100, obs_dim=input_dim, action_dim=action_dim)
 param = RecurrentParamsPool(
     input_dim=input_dim,
-    action_dim=action_dim,
-    noise_var=0.01,
-    noise_var_multiplier=1,
-    polyak=0.995  # changed to improve stability
+    action_dim=action_dim
 )
 
 

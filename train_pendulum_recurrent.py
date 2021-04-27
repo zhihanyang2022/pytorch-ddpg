@@ -39,10 +39,7 @@ input_dim = env.observation_space.shape[0] - 1
 buf = EpisodicReplayBuffer(capacity=5000, episode_len=200, obs_dim=input_dim, action_dim=1)
 param = RecurrentParamsPool(
     input_dim=input_dim,  # different for different versions of the environment
-    action_dim=env.action_space.shape[0],
-    noise_var=0.01,
-    noise_var_multiplier=1,
-    polyak=0.95
+    action_dim=env.action_space.shape[0]
 )
 
 
