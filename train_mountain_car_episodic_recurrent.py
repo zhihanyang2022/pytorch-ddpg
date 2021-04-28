@@ -1,10 +1,9 @@
 import gym
 from gym.wrappers import TimeLimit
-from gym.wrappers import Monitor
 
 from wrappers import ActionScalingWrapper
 from replay_buffer_episodic import EpisodicReplayBuffer
-from params_pool_recurrent import RecurrentParamsPool
+from rdpg.training_loop import RecurrentParamsPool
 
 import wandb
 import argparse

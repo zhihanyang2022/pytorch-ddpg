@@ -1,15 +1,8 @@
-import torch
 import gym
-import numpy as np
-from gym.wrappers import TimeLimit
-from collections import deque
-import time
 
-from replay_buffer import ReplayBuffer, Transition
 from replay_buffer_episodic import EpisodicReplayBuffer
 
-from params_pool import ParamsPool
-from params_pool_recurrent import RecurrentParamsPool
+from rdpg.training_loop import RecurrentParamsPool
 
 from wrappers import ActionScalingWrapper, PartialObsWrapper
 
